@@ -1,0 +1,62 @@
+工作內容
+1. 負責 CBCT 及其他醫療影像資料的完整處理流程，包括資料擷取、前處理與整合 AI 模型進行分析。
+2. 使用 Apache Spark 與 Airflow 設計、實作並優化可擴展的資料管線，處理大量醫療影像資料。
+3. 將 AI/ML 模型嵌入至 Airflow DAG 中，實現自動化分析並確保推論流程穩定與高效。
+4. 於 AWS 基礎設施上部署資料處理與 AI 推論管線，確保可擴展性、安全性與成本效益。
+5. 建置並維護 Docker 容器，使資料處理與推論流程可重複執行並便於部署。
+6. 實作監控與日誌紀錄機制，主動偵測問題並維持高效能與高可用性。
+7. 與資料與機器學習工程師、產品經理密切合作，優化資料處理流程並提升 AI 模型在醫療資料上的表現。
+8. 遵循醫療資料處理標準，確保法規遵循並維持程式碼品質、文件撰寫與測試的高標準。
+
+這是一個工作的內容 為了應徵這個工作 我打算先做一個mvp從收集CBCT資料開始
+上次跟gemini討論 他是確認完我確實有收集CBCT資料後進入第二項工作
+他要用docker把Apache Spark 與 Airflow跑起來 不過某些原因失敗了
+請你接下他的工作首先檢查airflow\docker-compose.yaml在幹嘛 有沒有邏輯上的問題 port衝突問題等等
+確認沒問題後執行看看能否成功
+
+(teethenv) C:\Users\ricky>docker ps
+CONTAINER ID   IMAGE                  COMMAND                   CREATED         STATUS                     PORTS                                         NAMES
+cf5fc8a9acbe   apache/airflow:2.9.2   "/usr/bin/dumb-init …"   4 minutes ago   Up 4 minutes (unhealthy)   8080/tcp                                      airflow-airflow-scheduler-1
+158d97d301c5   apache/airflow:2.9.2   "/usr/bin/dumb-init …"   4 minutes ago   Up 4 minutes (healthy)     0.0.0.0:8083->8080/tcp, [::]:8083->8080/tcp   airflow-airflow-webserver-1
+2628cdf6d6e8   postgres:13            "docker-entrypoint.s…"   4 minutes ago   Up 4 minutes (healthy)     0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp   airflow-postgres-1
+82291a22c37e   redis:latest           "docker-entrypoint.s…"   4 minutes ago   Up 4 minutes               0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp   airflow-redis-1
+其中cf5fc8a9acbeUp 4 minutes (unhealthy)怎麼回事
+
+(teethenv) C:\Users\ricky\Desktop\teeth_mvp\data_pipeline>docker ps -a
+CONTAINER ID   IMAGE                  COMMAND                   CREATED         STATUS                     PORTS                                                                                      NAMES
+d3fcb7b9c8d0   apache/airflow:2.9.2   "/bin/bash -c 'airfl…"   2 minutes ago   Exited (0) 2 minutes ago                                                                                              data_pipeline-airflow-init-1
+793e2bb10c7e   apache/airflow:2.9.2   "/usr/bin/dumb-init …"   7 minutes ago   Up 2 minutes               8080/tcp                                                                                   data_pipeline-airflow-scheduler-1
+cb9c21855e98   apache/airflow:2.9.2   "/usr/bin/dumb-init …"   7 minutes ago   Up 2 minutes (healthy)     0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp                                                data_pipeline-airflow-webserver-1
+9065cb14d876   bitnami/spark:latest   "/opt/bitnami/script…"   7 minutes ago   Up 7 minutes                                                                                                          data_pipeline-spark-worker-1
+5202e5707b56   postgres:13            "docker-entrypoint.s…"   7 minutes ago   Up 7 minutes (healthy)     0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp                                                data_pipeline-postgres-1
+1319ae63e299   redis:latest           "docker-entrypoint.s…"   7 minutes ago   Up 7 minutes (healthy)     0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp                                                data_pipeline-redis-1
+227932d676c1   bitnami/spark:latest   "/opt/bitnami/script…"   7 minutes ago   Up 7 minutes               0.0.0.0:7077->7077/tcp, [::]:7077->7077/tcp, 0.0.0.0:8081->8080/tcp, [::]:8081->8080/tcp   data_pipeline-spark-master-1
+
+(teethenv) C:\Users\ricky\Desktop\teeth_mvp\data_pipeline>
+
+先不要動作 我用docker ps -a
+看到有一個服務Exited (0) 2 minutes ago 其他則是都跑起來了 UI也可以正常使用
+那個EXIT的服務我是否可以忽略他
+
+現在這些服務spark airflow redis postgres是如何串接的 各自負責什麼
+
+我明明做了很多修改 為何當我
+(teethenv) C:\Users\ricky\Desktop\teeth_mvp>git add .
+
+(teethenv) C:\Users\ricky\Desktop\teeth_mvp>git status
+On branch main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+
+(teethenv) C:\Users\ricky\Desktop\teeth_mvp>git commit -m "update"
+On branch main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+
+(teethenv) C:\Users\ricky\Desktop\teeth_mvp>git push
+Everything up-to-date
+
+(teethenv) C:\Users\ricky\Desktop\teeth_mvp>
+會看到這樣好像根本沒改
