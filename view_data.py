@@ -1,99 +1,207 @@
-
 import pyvista as pv
 import nibabel as nib
 import numpy as np
 import os
+import nibabel.affines as affines
 
 # --- 設定檔案路徑 ---
-# 您可以修改這個基底路徑和病患編號
 BASE_DIR = "teeth_data1"
 PATIENT_ID = "002"
 
-# 自動建立檔案路徑
 cbct_path = os.path.join(BASE_DIR, PATIENT_ID, f"{PATIENT_ID}_cbct", f"{PATIENT_ID}_cbct.nii.gz")
 lower_jaw_path = os.path.join(BASE_DIR, PATIENT_ID, f"{PATIENT_ID}_ios", f"{PATIENT_ID}_LowerJawScan.stl")
 upper_jaw_path = os.path.join(BASE_DIR, PATIENT_ID, f"{PATIENT_ID}_ios", f"{PATIENT_ID}_UpperJawScan.stl")
-
 # --- 載入和處理資料 ---
-
-# 1. 載入 STL 網格
 try:
     lower_jaw_mesh = pv.read(lower_jaw_path)
     upper_jaw_mesh = pv.read(upper_jaw_path)
+
+    # --- 嘗試手動對齊 STL 模型 (需要根據實際情況調整數值) ---
+    # 範例：平移下顎模型
+    # lower_jaw_mesh.points += [x_offset, y_offset, z_offset] # 替換 x_offset, y_offset, z_offset 為實際數值
+
+    # 範例：旋轉下顎模型 (繞 X 軸旋轉 90 度)
+    # lower_jaw_mesh.rotate_x(90, inplace=True)
+
+    # 範例：平移上顎模型
+    # upper_jaw_mesh.points += [x_offset, y_offset, z_offset]
+
+    # 範例：旋轉上顎模型
+    # upper_jaw_mesh.rotate_y(90, inplace=True)
+    # --- 手動對齊範例結束 ---
+
 except FileNotFoundError as e:
     print(f"錯誤: 找不到 STL 檔案: {e}")
     exit()
 
-# 2. 載入 NIfTI 影像
 try:
     nii_img = nib.load(cbct_path)
-    # 取得影像資料和仿射矩陣 (affine)
-    # 仿射矩陣定義了影像資料在物理空間中的位置、方向和尺度
     affine = nii_img.affine
-    # 將資料轉換為 numpy 陣列
     volume_data = nii_img.get_fdata()
+    print(f"CBCT affine matrix:\n{affine}")
+    print(f"CBCT data min/max: {np.min(volume_data)} / {np.max(volume_data)}")
 except FileNotFoundError as e:
     print(f"錯誤: 找不到 NIfTI 檔案: {e}")
     exit()
 
-# 3. 建立 PyVista 的影像資料物件
-# 我們需要將 numpy 陣列轉換為 PyVista 可以理解的格式
-# 注意：PyVista 和 Nibabel 的座標方向可能不同，仿射矩陣 (affine) 是關鍵
-# 我們先建立一個 UniformGrid
+# 從 affine 矩陣提取 spacing 和 origin
+spacing = np.abs(np.diag(affine)[:3])
+# 使用 nibabel.affines.apply_affine 計算 [0,0,0] 體素在世界座標中的位置
+origin = affines.apply_affine(affine, [0, 0, 0])
+
 grid = pv.ImageData()
 grid.dimensions = np.array(volume_data.shape)
-# 將 numpy 陣列與 grid 關聯
-grid.point_data["values"] = volume_data.flatten(order="F")  # 使用 Fortran 順序
-
-# 使用仿射矩陣來正確地定位、縮放和旋轉影像
-# 我們將仿射矩陣應用到 grid 的點上
-transform_matrix = pv.vtkmatrix_from_array(affine)
-grid.transform(transform_matrix, inplace=True)
-
+grid.spacing = spacing
+grid.origin = origin
+grid.point_data["values"] = volume_data.flatten(order="C")
 
 # --- 視覺化 ---
-
-# 建立一個繪圖器
 plotter = pv.Plotter(window_size=[1024, 768])
 
-# 1. 加入 STL 網格到場景
-# style='surface' 表示以實體表面顯示
-# color='white' 和 opacity=0.7 可以讓它看起來像牙齒模型
+# 儲存原始網格，以便每次變換都從原始狀態開始
+lower_jaw_mesh_initial = lower_jaw_mesh.copy()
+upper_jaw_mesh_initial = upper_jaw_mesh.copy()
 plotter.add_mesh(lower_jaw_mesh, color="white", opacity=0.7, name="Lower Jaw")
 plotter.add_mesh(upper_jaw_mesh, color="white", opacity=0.7, name="Upper Jaw")
 
-# 2. 加入 CBCT 影像
-# 我們有幾種方式可以視覺化體積資料：
+# 方案二：使用預設的不透明度傳輸函數
+# PyVista 提供了一些預設的函數，例如 'linear' 或 'sigmoid'
+# 'sigmoid' 函數通常適用於醫學影像，能有效區分軟組織和硬組織
+plotter.add_volume(grid, cmap="bone", opacity="sigmoid", name="CBCT Volume")
 
-# 選項 A: 顯示三個正交切面 (類似 3D Slicer 的紅、黃、綠線)
-# plotter.add_mesh(grid.slice_orthogonal(), name="Orthogonal Slices")
+# --- 互動式滑桿設定 ---
 
-# 選項 B: 顯示單一一個切面，並可以拖動
-# plotter.add_mesh(grid.slice(normal='z'), name="Single Slice")
+# 初始變換參數
+lower_jaw_params = {'tx': 0.0, 'ty': 0.0, 'tz': 0.0, 'rx': 0.0, 'ry': 0.0, 'rz': 0.0}
+upper_jaw_params = {'tx': 0.0, 'ty': 0.0, 'tz': 0.0, 'rx': 0.0, 'ry': 0.0, 'rz': 0.0}
 
-# 選項 C: 體積渲染 (Volume Rendering) - 這最能展現 3D 結構
-# `cmap='bone'` 使用類似骨頭的顏色映射
-# `opacity='linear'` 讓低密度區域更透明，高密度區域更實心
-plotter.add_volume(grid, cmap="bone", opacity="linear", name="CBCT Volume")
+# 更新下顎模型的回調函數
+def update_lower_jaw_transform(value, param_name):
+    print(f"Lower Jaw: Updating {param_name} to {value}")
+    lower_jaw_params[param_name] = value
+    
+    # 每次都從原始網格的完整副本開始
+    transformed_mesh = lower_jaw_mesh_initial.copy()
+    
+    # 應用平移
+    transformed_mesh.translate([lower_jaw_params['tx'], lower_jaw_params['ty'], lower_jaw_params['tz']], inplace=True)
+    
+    # 應用旋轉
+    transformed_mesh.rotate_x(lower_jaw_params['rx'], inplace=True)
+    transformed_mesh.rotate_y(lower_jaw_params['ry'], inplace=True)
+    transformed_mesh.rotate_z(lower_jaw_params['rz'], inplace=True)
+    
+    print(f"Lower Jaw points (first 3):\n{transformed_mesh.points[:3]}")
+    
+    # 直接更新演員的輸入數據
+    actor = plotter.actors["Lower Jaw"]
+    actor.SetInputData(transformed_mesh.GetPolyData())
+    actor.GetMapper().Update()
+    
+    plotter.render()
+    plotter.reset_camera() # 嘗試重置相機以強制重繪
 
+# 更新上顎模型的回調函數
+def update_upper_jaw_transform(value, param_name):
+    print(f"Upper Jaw: Updating {param_name} to {value}")
+    upper_jaw_params[param_name] = value
+    
+    # 每次都從原始網格的完整副本開始
+    transformed_mesh = upper_jaw_mesh_initial.copy()
+    
+    # 應用平移
+    transformed_mesh.translate([upper_jaw_params['tx'], upper_jaw_params['ty'], upper_jaw_params['tz']], inplace=True)
+    
+    # 應用旋轉
+    transformed_mesh.rotate_x(upper_jaw_params['rx'], inplace=True)
+    transformed_mesh.rotate_y(upper_jaw_params['ry'], inplace=True)
+    transformed_mesh.rotate_z(upper_jaw_params['rz'], inplace=True)
+    
+    print(f"Upper Jaw points (first 3):\n{transformed_mesh.points[:3]}")
+    
+    # 直接更新演員的輸入數據
+    actor = plotter.actors["Upper Jaw"]
+    actor.SetInputData(transformed_mesh.GetPolyData())
+    actor.GetMapper().Update()
+    
+    plotter.render()
+    plotter.reset_camera() # 嘗試重置相機以強制重繪
+
+# 添加下顎平移滑桿
+plotter.add_slider_widget(
+    lambda value: update_lower_jaw_transform(value, 'tx'),
+    [-100, 100], value=0, title='Lower Jaw Tx',
+    pointa=(0.02, 0.9), pointb=(0.3, 0.9)
+)
+plotter.add_slider_widget(
+    lambda value: update_lower_jaw_transform(value, 'ty'),
+    [-100, 100], value=0, title='Lower Jaw Ty',
+    pointa=(0.02, 0.85), pointb=(0.3, 0.85)
+)
+plotter.add_slider_widget(
+    lambda value: update_lower_jaw_transform(value, 'tz'),
+    [-100, 100], value=0, title='Lower Jaw Tz',
+    pointa=(0.02, 0.8), pointb=(0.3, 0.8)
+)
+
+# 添加下顎旋轉滑桿
+plotter.add_slider_widget(
+    lambda value: update_lower_jaw_transform(value, 'rx'),
+    [-180, 180], value=0, title='Lower Jaw Rx',
+    pointa=(0.02, 0.7), pointb=(0.3, 0.7)
+)
+plotter.add_slider_widget(
+    lambda value: update_lower_jaw_transform(value, 'ry'),
+    [-180, 180], value=0, title='Lower Jaw Ry',
+    pointa=(0.02, 0.65), pointb=(0.3, 0.65)
+)
+plotter.add_slider_widget(
+    lambda value: update_lower_jaw_transform(value, 'rz'),
+    [-180, 180], value=0, title='Lower Jaw Rz',
+    pointa=(0.02, 0.6), pointb=(0.3, 0.6)
+)
+
+# 添加上顎平移滑桿
+plotter.add_slider_widget(
+    lambda value: update_upper_jaw_transform(value, 'tx'),
+    [-100, 100], value=0, title='Upper Jaw Tx',
+    pointa=(0.7, 0.9), pointb=(0.98, 0.9)
+)
+plotter.add_slider_widget(
+    lambda value: update_upper_jaw_transform(value, 'ty'),
+    [-100, 100], value=0, title='Upper Jaw Ty',
+    pointa=(0.7, 0.85), pointb=(0.98, 0.85)
+)
+plotter.add_slider_widget(
+    lambda value: update_upper_jaw_transform(value, 'tz'),
+    [-100, 100], value=0, title='Upper Jaw Tz',
+    pointa=(0.7, 0.8), pointb=(0.98, 0.8)
+)
+
+# 添加上顎旋轉滑桿
+plotter.add_slider_widget(
+    lambda value: update_upper_jaw_transform(value, 'rx'),
+    [-180, 180], value=0, title='Upper Jaw Rx',
+    pointa=(0.7, 0.7), pointb=(0.98, 0.7)
+)
+plotter.add_slider_widget(
+    lambda value: update_upper_jaw_transform(value, 'ry'),
+    [-180, 180], value=0, title='Upper Jaw Ry',
+    pointa=(0.7, 0.65), pointb=(0.98, 0.65)
+)
+plotter.add_slider_widget(
+    lambda value: update_upper_jaw_transform(value, 'rz'),
+    [-180, 180], value=0, title='Upper Jaw Rz',
+    pointa=(0.7, 0.6), pointb=(0.98, 0.6)
+)
 
 # --- 設定場景和顯示 ---
-
-# 加入一個方向標示
 axes_actor = pv.create_axes_marker(labels_off=True)
 plotter.add_orientation_widget(axes_actor)
-
-# 設定攝影機初始位置
-plotter.camera_position = 'xy'
-plotter.camera.roll = 90 # 調整視角以符合通常的牙科視角
-
-# 增加一個標題
 plotter.add_title(f"CBCT and IOS Scans for Patient {PATIENT_ID}", font_size=16)
 
-# 顯示場景，這會開啟一個互動視窗
-# 您可以用滑鼠左鍵旋轉、右鍵縮放、中鍵平移
 print("正在開啟 3D 視覺化視窗...")
 print("操作提示: 左鍵=旋轉, 右鍵=縮放, 中鍵=平移")
+print("使用滑桿調整牙齒模型位置和方向。")
 plotter.show()
-
 print("視窗已關閉。")
