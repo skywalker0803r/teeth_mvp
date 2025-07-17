@@ -1,0 +1,1 @@
+Inference result for image_002.features.txt: AI detected something based on Processed features for image_002.dcm: DUMMY_IMAGE_DATA_002

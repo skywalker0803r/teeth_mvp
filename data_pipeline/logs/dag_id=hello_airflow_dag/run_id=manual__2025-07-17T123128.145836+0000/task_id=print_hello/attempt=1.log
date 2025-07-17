@@ -1,0 +1,23 @@
+[2025-07-17T12:31:28.966+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
+[2025-07-17T12:31:29.015+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: hello_airflow_dag.print_hello manual__2025-07-17T12:31:28.145836+00:00 [queued]>
+[2025-07-17T12:31:29.026+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: hello_airflow_dag.print_hello manual__2025-07-17T12:31:28.145836+00:00 [queued]>
+[2025-07-17T12:31:29.027+0000] {taskinstance.py:2306} INFO - Starting attempt 1 of 1
+[2025-07-17T12:31:29.043+0000] {taskinstance.py:2330} INFO - Executing <Task(BashOperator): print_hello> on 2025-07-17 12:31:28.145836+00:00
+[2025-07-17T12:31:29.056+0000] {logging_mixin.py:188} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:61 DeprecationWarning: This process (pid=165) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2025-07-17T12:31:29.052+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'hello_***_dag', 'print_hello', 'manual__2025-07-17T12:31:28.145836+00:00', '--job-id', '2', '--raw', '--subdir', 'DAGS_FOLDER/hello_***_dag.py', '--cfg-path', '/tmp/tmpb78wzfto']
+[2025-07-17T12:31:29.059+0000] {standard_task_runner.py:63} INFO - Started process 166 to run task
+[2025-07-17T12:31:29.059+0000] {standard_task_runner.py:91} INFO - Job 2: Subtask print_hello
+[2025-07-17T12:31:29.084+0000] {logging_mixin.py:188} WARNING - /home/***/.local/lib/python3.12/site-packages/***/settings.py:195 DeprecationWarning: The sql_alchemy_conn option in [core] has been moved to the sql_alchemy_conn option in [database] - the old setting has been used, but please update your config.
+[2025-07-17T12:31:29.154+0000] {task_command.py:426} INFO - Running <TaskInstance: hello_airflow_dag.print_hello manual__2025-07-17T12:31:28.145836+00:00 [running]> on host 793e2bb10c7e
+[2025-07-17T12:31:29.293+0000] {taskinstance.py:2648} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='***' AIRFLOW_CTX_DAG_ID='hello_***_dag' AIRFLOW_CTX_TASK_ID='print_hello' AIRFLOW_CTX_EXECUTION_DATE='2025-07-17T12:31:28.145836+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2025-07-17T12:31:28.145836+00:00'
+[2025-07-17T12:31:29.296+0000] {taskinstance.py:430} INFO - ::endgroup::
+[2025-07-17T12:31:29.353+0000] {subprocess.py:63} INFO - Tmp dir root location: /tmp
+[2025-07-17T12:31:29.356+0000] {subprocess.py:75} INFO - Running command: ['/usr/bin/bash', '-c', 'echo "Hello Airflow!"']
+[2025-07-17T12:31:29.368+0000] {subprocess.py:86} INFO - Output:
+[2025-07-17T12:31:29.373+0000] {subprocess.py:93} INFO - Hello Airflow!
+[2025-07-17T12:31:29.374+0000] {subprocess.py:97} INFO - Command exited with return code 0
+[2025-07-17T12:31:29.375+0000] {taskinstance.py:441} INFO - ::group::Post task execution logs
+[2025-07-17T12:31:29.426+0000] {taskinstance.py:1206} INFO - Marking task as SUCCESS. dag_id=hello_***_dag, task_id=print_hello, run_id=manual__2025-07-17T12:31:28.145836+00:00, execution_date=20250717T123128, start_date=20250717T123129, end_date=20250717T123129
+[2025-07-17T12:31:29.475+0000] {local_task_job_runner.py:240} INFO - Task exited with return code 0
+[2025-07-17T12:31:29.498+0000] {taskinstance.py:3503} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2025-07-17T12:31:29.504+0000] {local_task_job_runner.py:222} INFO - ::endgroup::

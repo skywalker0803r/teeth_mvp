@@ -1,0 +1,1 @@
+Processed features for image_003.dcm: DUMMY_IMAGE_DATA_003
